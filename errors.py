@@ -1,0 +1,2 @@
+class unknownUnit(Exception):
+    pass
