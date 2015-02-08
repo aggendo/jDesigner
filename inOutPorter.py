@@ -1,6 +1,7 @@
 import visualizer as v
 from dxfwrite import DXFEngine as dxf
 import currentf as currentf
+import re
 
 def exportDxf(canvas, filename):
     drawing = dxf.drawing(filename)
@@ -33,7 +34,7 @@ class unknownNumberOrUnit(Exception):
 def circle(x, y, r):
     global canvas
     c = v.circle(x, y, r)
-    canvas.create_oval(c[0], c[1], c[2], c[3], width=v.lineTh, activeoutline="yellow")
+    return(canvas.create_oval(c[0], c[1], c[2], c[3], width=v.lineTh, activeoutline="yellow"))
 
 def lineDraw(x1, y1, x2, y2):
     return(canvas.create_line(v.cor(x1), v.cor(y1), v.cor(x2), v.cor(y2), width=v.lineTh, activefill="yellow"))
@@ -79,6 +80,15 @@ def doCommand(uLine):
                     break
             if(cent==None):
                 cent = "center"
+            if(cent=="center"):
+                cent=2
+            elif(cent=="outside"):
+                cent=1
+            elif(cent=="inside"):
+                cent=3
+            else:
+                #raise() TODO
+                pass
             if(len(options)!=commands[cType][1]):
                 raise MissMatchedOptionsException(str(uLine+1) + ": not right number of arguments for command " + commands[cType][0] + " this method requires " + str(commands[cType][1]) + " options!");
             else:
@@ -90,14 +100,15 @@ def doCommand(uLine):
                     #currentZ=currentLayerZ;
                     #addToOut(moveZ(int(options[0])), comment(lineNum, "moveZLayer"));
                 elif(cType==1): #line
-                    print("line")
+                    #print("line")
                     mez = getMes(uLine, x1=options[0], y1=options[1], x2=options[2], y2=options[3])
                     mess = mez[0]
                     uns = mez[1]
                     del mez
                     Id = lineDraw(mess['x1'], mess['y1'], mess['x2'], mess['y2'])
+                    uns['center']=cent
                     del mess
-                    cur.addListLine(Id, center=cent **uns)
+                    cur.addListLine(Id, **uns)
                     del uns
                 elif(cType==2): #comment
                     pass
@@ -109,8 +120,10 @@ def doCommand(uLine):
                     uns = mez[1]
                     del mez
                     Id = circle(mess['x'], mess['y'], mess['r'])
+                    print(Id)
+                    uns['center']=cent
                     del mess
-                    cur.addListCircle(Id, center=cent **uns)
+                    cur.addListCircle(Id, **uns)#center=cent, xu=uns['xu#wish I could figure out why this does not work using**uns)
                     del uns
                 elif(cType==4): #arc
                     arc(int(options[0]), int(options[1]), int(options[2]), int(options[3]), int(options[4]), int(options[5]), int(options[6]))
@@ -133,48 +146,39 @@ def doCommand(uLine):
                 raise unknownCommandException(str(lineNum+1) + ": Unknown command: " + uLine);
 
 def getMes(lineNum, **lenStrs): #this converts strings that are numbers and strings with units into what they are
-    units = []
-    numbers = []
+    units = {}
+    numbers = {}
     i=0
     for ie in lenStrs.items():
         k = str(ie[0])
         v = str(ie[1])
         #print("k "+k)
         #print("v "+v)
-        vv=v
-        print(v.endswith(tuple(['mm'])))
-        print(v.endswith(tuple(['mm', 'in','\'', '\"', 'cm', 'ft', 'yd', 'm'])))
-        stupidvar = v.endswidth(tuple(['mm']))
-        if(stupidvar): #fix this whole tupple thing
+        vv=re.sub(r"[ +-0123456789.]", r"", v)
+        v=re.sub(r"[ inmftyd'\"c]", r"", v)
+        if(vv=="mm"): #fix this whole tupple thing
             u = 'mm'
-            v.replace(u, 'mm')
             numbers[k] = int(v)
             units[k+"u"] = u
-        elif(v.endswith(tuple(['in', '\'']))):
-            u = 'in'
-            v.replace(u, 'in')
-            v.replace(u, '\'')
+        elif(vv=='in' or v=='\"'):
+            u = 'in'#TODO EVENTUALLY keep track of if they use in or " same for ft
             numbers[k] = int(v)*24.5
             units[k+"u"] = u
-        elif(v.endswith(tuple(['cm']))):
+        elif(vv=='cm'):
             u = 'cm'
-            v.replace(u, 'cm')
+            v.replace('cm', '')
             numbers[k] = int(v)*10
             units[k+"u"] = u
-        elif(v.endswith(tuple(['ft','\"']))):
+        elif(vv=='ft' or v=='\''):
             u = 'ft'
-            v.replace(u, 'ft')
-            v.replace(u, '\"')
             numbers[k] = int(v)*294   #24.5*12
             units[k+"u"] = u
-        elif(v.endswith(tuple(['yd']))):
+        elif(vv=='yd'):
             u = 'yd'
-            v.replace(u, 'yd')
             numbers[k] = int(v)*882 #24.5*12*3
             units[k+"u"] = u
-        elif(v.endswith(tuple(['m']))):
+        elif(vv=='m'):
             u = 'm'
-            v.replace(u, 'm')
             numbers[k] = int(v)*1000
             units[k+"u"] = u
         else:
