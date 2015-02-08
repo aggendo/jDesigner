@@ -8,6 +8,7 @@ import os.path as path
 import currentf as currentf
 import errors as errors
 import mathCordHelper as mH
+import re
 #import eFrames as eF
 
 gridSpacing = 50
@@ -30,8 +31,8 @@ global prop
 global propertiesPane
 global creating
 global selectedOps #the options of selected circles and needed to be passed
+mouseInside=False #is the mouse inside of the canvas widget
 
-mouseInside=False
 def move(event):
     global canvas
     global selected
@@ -92,68 +93,133 @@ def updateProps():
     global prop
     global canvas
     global selected
-    if(propertiesPane!=""):
-        clearProps()
+    if(propertiesPane!=""): #check for presence of old property panel
+        clearProps()        #make way for new properties panel
     if(canvas.type(selected)=="line"):
         propertiesPane = editLine(prop)
     elif(canvas.type(selected)=="oval"):
         propertiesPane = editCircle(prop)
         
 
-def click(event):
+def click(event):           #this event fires whenever there is a click while the application has focus
     global selected
     global canvas
-    if(mouseInside):
-        if(selected!=0):
+    if(mouseInside):        #this narrows it down to clicks inside of the canvas.
+                            #this way you do not click on a textbox in the properties panel only to deselect everything
+        if(selected!=0):            #if there was something perviously selected
             try:
-                canvas.itemconfig(selected, outline="black")
+                canvas.itemconfig(selected, outline="black")    #attempt to set a black outline
             except(Exception):
-                canvas.itemconfig(selected, fill="black")
-        current = canvas.find_withtag(CURRENT)
-        if(str(current)!="()"):
-            notGrid=True #set variable initially
-            tags = canvas.gettags(current)
-            for tag in tags: #loop through tags
-                if(tag=="grid"):#if this is part of grid
-                    notGrid=False #mark as not selectable
-                    break
-            if(notGrid): #continue if it passed the grid test
+                canvas.itemconfig(selected, fill="black")   #some items do not have an outline and have a fill instead
+        current = canvas.find_withtag(CURRENT)  #set selected to the ids of the selected items
+        if(str(current)!="()"):                 #if some item was actually clicked on
+            notGrid=True                        #set variable initially
+            tags = canvas.gettags(current)      #get all the tags for this object
+            for tag in tags:            #loop through tags
+                if(tag=="grid"):        #if this is part of grid
+                    notGrid=False       #mark as not selectable
+                    break               #exit from loop
+            if(notGrid):                #continue if it passed the grid test
                 selected = current
                 try:
-                    canvas.itemconfig(current, outline="green")
+                    canvas.itemconfig(current, outline="green") #same as try above only for setting selection color
                 except(Exception):
                     canvas.itemconfig(selected, fill="green")
-                updateProps()
-            else:
-                selected=0
-                clearProps()
+                updateProps()           #change the property panel to reflect the new object
+            else:                       #we clicked a grid object
+                selected=0              #clear selected variable
+                clearProps()            #get rid of properties panel
         else:
-            clearProps()
-            select=0
+            clearProps()        #we did not click anything so get rid of properties panel
+            select=0            #clear selected variable
+
+def fullUnitify(x): #this if for when it comes as text like '10.0mm'
+    vv=re.sub(r"[ -+0123456789.]", r"", x)
+    v=re.sub(r"[ inmftyd'\"c]", r"", x)
+    u='mm'
+    if(vv=="mm"):
+        texts = float(v)
+    elif(vv=='in' or v=='\"'):
+        u='in'
+        texts = float(v)*24.5
+    elif(vv=='cm'):
+        u='cm'
+        texts = float(v)*10
+    elif(vv=='ft' or v=='\''):
+        u='ft'
+        texts = float(v)*294   #24.5*12
+    elif(vv=='yd'):
+        u='yd'
+        texts = float(v)*882 #24.5*12*3
+    elif(vv=='m'):
+        u='m'
+        texts = float(v)*1000
+    else:
+        try: #TODO switch to using string.digits or is it string.isnumber?
+            texts = float(v)
+        except:
+            raise(errors.unknownUnit())
+    return(texts) #TODO delete the u var
 
 def numeric(action, index, value_if_allowed,
                        prior_value, text, validation_type, trigger_type, widget_name, coHo="", chow=""):
     global selected
     global canvas
     global selectedOps
-    if text in '0123456789.-+':
-        try:
-            if(chow==""):
-                coords = canvas.coords(selected)
-                coords[int(coHo)] = cor(float(value_if_allowed))
-                canvas.coords(selected, coords[0], coords[1], coords[2], coords[3])
-            elif(chow=='1'):
-                selectedOps[int(coHo)] = float(value_if_allowed)
-                coords = circle(selectedOps[0], selectedOps[1], selectedOps[2])
-                canvas.coords(selected, coords[0], coords[1], coords[2], coords[3])
-            else:
-                float(value_if_allowed)
-            return True
-        except ValueError:
-            return False
+    cur = currentf.getInstance()
+    vv=re.sub(r"[ -+0123456789.]", r"", value_if_allowed)
+    v=re.sub(r"[ inmftyd'\"c]", r"", value_if_allowed)
+    u='mm'
+    if(vv=="mm"):
+        texts = float(v)
+    elif(vv=='in' or v=='\"'):
+        u='in'
+        texts = float(v)*24.5
+    elif(vv=='cm'):
+        u='cm'
+        texts = float(v)*10
+    elif(vv=='ft' or v=='\''):
+        u='ft'
+        texts = float(v)*294   #24.5*12
+    elif(vv=='yd'):
+        u='yd'
+        texts = float(v)*882 #24.5*12*3
+    elif(vv=='m'):
+        u='m'
+        texts = float(v)*1000
     else:
-        return False
-    
+        try: #TODO switch to using string.digits or is it string.isnumber?
+            texts = float(v)
+        except:
+            return(True)#somehow need to show that the value will not work maybe it will turn red, or maybe it will revert and show a tooltip when they click away
+    value_if_allowed = texts
+    if(chow==""):
+        coords = canvas.coords(selected)
+        coords[int(coHo)] = cor(value_if_allowed)
+        if(coHo==0):#x1
+            cur.listConfig(selected[0], x1u=u)
+        elif(coHo==1):#y1
+            cur.listConfig(selected[0], y1u=u)
+        elif(coHo==2):#x2
+            cur.listConfig(selected[0], x2u=u)
+        elif(coHo==3):#y2
+            cur.listConfig(selected[0], y2u=u)
+        canvas.coords(selected, coords[0], coords[1], coords[2], coords[3])
+    elif(chow=='1'):
+        coHo = int(coHo)
+        for i in range(0, len(selectedOps), 1):
+            if(type(selectedOps[i])==str):
+                selectedOps[i] = fullUnitify(selectedOps[i])
+        selectedOps[coHo] = value_if_allowed
+        if(coHo==0):#y
+            cur.listConfig(selected[0], xu=u)
+        elif(coHo==1):#x
+            cur.listConfig(selected[0], yu=u)
+        elif(coHo==2):#r
+            cur.listConfig(selected[0], ru=u)
+        coords = circle(selectedOps[0], selectedOps[1], selectedOps[2])
+        canvas.coords(selected, coords[0], coords[1], coords[2], coords[3])
+    return True    
 
 def callback(event):
     canvas = event.widget
@@ -512,7 +578,53 @@ def createGrid(canvas): #TODO keep track of lines in grid for grid updates
         #canvas.create_text(i, 0, anchor="N", text=str(0-half), fill="grey")
         canvas.create_line(15, i, cWidth, i, fill="grey", tags="grid")
 
-def circle(x, y, r, u='mm', c=2):
+def unitify(r, u):#make mm!!!!?
+    if(u=='in'):#TODO make cor use this
+        r=r*25.4
+    elif(u=='ft'):
+        r=r*304.8
+    elif(u=='cm'):
+        r=r*10
+    elif(u=='mm'):
+        pass
+    else:
+        raise(errors.unknownUnit())
+    return(r)
+
+def uUnitify(r, u, c=2):#unmake mm because some people like their stinking imperial system!?!?!?!??!!?!??!!?!??!?!?????????
+    dis = unitify(lineTH/2, u)#make sure to convert displacement to new unit
+    if(c==1):
+        pass
+    elif(c==2):
+        r=r-dis
+    elif(c==3):
+        r=r+dis
+    else:
+        pass #TODO error handling here
+    if(u=='in'):#TODO make ucor use this
+        r=r/25.4
+    elif(u=='ft'):
+        r=r/304.8
+    elif(u=='cm'):
+        r=r/10
+    elif(u=='mm'):
+        pass
+    else:
+        raise(errors.unknownUnit())
+    if(c==1):
+        pass
+    elif(c==2):
+        r=r+dis
+    elif(c==3):
+        r=r-dis
+    #no else because error would have triggered else above
+    return(r)
+
+def circle(cx, cy, cr, xu='mm', c=2, yu='mm', ru='mm'):#check if unit is nessessary
+    x = unitify(cx, xu)
+    y = unitify(cy, yu)
+    r = unitify(cr, ru)
+    u='mm'
     if(c==2):
         return([cor(x-r, u, c), cor(y-r, u, c), cor(x+r, u, c), cor(y+r, u, c)])
     elif(c==1):
@@ -521,37 +633,52 @@ def circle(x, y, r, u='mm', c=2):
         return([cor(x-r, u, 3), cor(y-r, u, 3), cor(x+r, u, 1), cor(y+r, u, 1)])
     
 
-def uCircle(px1, py1, px2, py2, px1u='mm', py1u='mm', px2u='mm', py2u='mm', center=2):
-    c = center
+def uCircle(px1, py1, px2, py2, center=2):
+    cur = currentf.getInstance()
+    itConf = cur.listConfig(selected[0])
+    cc = c = center
+    
     if(center==2):
-        x1 = ucor(px1, px1u, c)
-        y1 = ucor(py1, py1u, c)
-        x2 = ucor(px2, py1u, c)
-        y2 = ucor(py2, py1u, c)
+        x1 = ucor(px1, 'mm', c)
+        y1 = ucor(py1, 'mm', c)
+        x2 = ucor(px2, 'mm', c)
+        y2 = ucor(py2, 'mm', c)
     elif(center==3):
         c=3
-        x1 = ucor(px1, px1u, c)
-        y1 = ucor(py1, py1u, c)
+        x1 = ucor(px1, 'mm', c)
+        y1 = ucor(py1, 'mm', c)
         c=1
-        x2 = ucor(px2, py1u, c)
-        y2 = ucor(py2, py1u, c)
+        x2 = ucor(px2, 'mm', c)
+        y2 = ucor(py2, 'mm', c)
     else:
         c=1
-        x1 = ucor(px1, px1u, c)
-        y1 = ucor(py1, py1u, c)
+        x1 = ucor(px1, 'mm', c)
+        y1 = ucor(py1, 'mm', c)
         c=3
-        x2 = ucor(px2, py1u, c)
-        y2 = ucor(py2, py1u, c)
+        x2 = ucor(px2, 'mm', c)
+        y2 = ucor(py2, 'mm', c)
     cx = x1+x2
     cx = cx/2 #find average or in this case middle
     cy = y1+y2
     cy = cy/2
     r=0
     if(x1>cx):
-        r=x1-cx
+        r=uUnitify(x1-cx, itConf['ru'], c)
     else:
-        r=x2-cx
-    return([cx, cy, r])
+        if(c==1):
+            r=uUnitify(x2-cx, itConf['ru'], 3)
+        elif(c==3):
+            r=uUnitify(x2-cx, itConf['ru'], 1)
+        else:
+            r=uUnitify(x2-cx, itConf['ru'], c)
+    cx=uUnitify(cx, itConf['xu'])
+    cy=uUnitify(cy, itConf['yu'])
+    d = r*2
+    cx = str(cx) + itConf['xu']
+    cy = str(cy) + itConf['yu']
+    r  = str(r)  + itConf['ru']
+    d  = str(d)  + itConf['ru']
+    return([cx, cy, r, d])
 
 def createCircle(event=""):
     d = MyDialog(master)
@@ -570,6 +697,7 @@ def createHole(event=""):
 def new(event=""):
     global canvas
     #del canvas.find_withtag(ALL)
+    #TODO prompt are you sure then make sure to get rid of the old stuff
     createGrid(canvas)
 
 def generate(event=""):
@@ -610,10 +738,55 @@ def performOpen(event=""):
     options['title'] = 'Open'
     file_path = tkFileDialog.askopenfilename(**file_opt)#mode='r'
     #if(os
-    cnf.addRecent(file_path.split("\\")[len(file_path.split('\\'))-1], file_path)
+    name = file_path.split("\\")[len(file_path.split('\\'))-1]
+    cnf.addRecent(name, file_path)
+    #TODO save default folder if the working directory is not set in settings
     w = open(file_path, "r")
     inOut.imPorter(canvas, w)
     w.close()
+    master.title('JDesigner '+name)
+
+def createSomething(event): #control shift
+    k = event.keycode
+    if(k==67): #c
+        createCircle()
+    elif(k==76): #l
+        createLine()
+    elif(k==65): #a
+        createArc()
+    elif(k==83): #s
+        pass #save as
+    else:
+        #print(k)
+        pass
+    master.bind('a', createArc)
+    master.bind('l', createLine)
+    master.bind('h', createHole)
+    master.bind('d', delete)
+    master.bind('n', new)
+    master.bind('g', generate)
+
+def ctrlSomething(event): #control held
+    k = event.keycode
+    if(k==83): #s
+        pass
+    elif(k==65): #a
+        pass
+    elif(k==78): #n
+         new()
+    elif(k==71): #g
+        generate()
+    elif(k==73): #i
+        pass #import (maybe)
+    elif(k==79): #o
+        performOpen()
+    elif(k==80): #p
+        pass #prep 3d print
+    elif(k==68): #d
+        pass #deselect
+    else:
+        print(k)
+        pass
 
 def createWindow():
     global master
@@ -621,7 +794,7 @@ def createWindow():
     global prop
     global propertiesPane
     master = Tk()
-    master.title("new document")
+    master.title("JDesigner *New File*")
     mainframe = Frame(master)#padding="3 3 12 12")
     master.columnconfigure(0, weight=2)
     master.columnconfigure(1, weight=1)
@@ -666,19 +839,14 @@ def createWindow():
     #w.delete(i)
     #w.delete(ALL)
     #p.pack()
-    master.bind('s', select)
-    master.bind('c', createCircle)
-    master.bind('a', createArc)
-    master.bind('l', createLine)
-    master.bind('h', createHole)
-    master.bind('d', delete)
-    master.bind('n', new)
-    master.bind('g', generate)
+    master.bind('<Control-Shift-Key>', createSomething)
+    master.bind('<Control-Key>', ctrlSomething)
     master.bind('<Button-1>', click)
     master.bind('<Up>', move)
     master.bind('<Down>', move)
     master.bind('<Left>', move)
     master.bind('<Right>', move)
+    #master.bind('<configure>' resize) #todo resize preformed
     w.bind('<Enter>', inM)
     w.bind('<Leave>', outM)
     mainframe.grid(row=0, column=0)
@@ -830,7 +998,7 @@ def editCircle(master):
     itConf = cur.listConfig(selected[0])
     var.set(OPTIONS[itConf['center']-1]) # default value
     var.trace("w", lambda name, index, mode, var=var, ob=selected: centerChange(var, ob))
-    vals = uCircle(coords[0], coords[1], coords[2], coords[3], 'mm', 'mm', 'mm', 'mm', itConf['center'])
+    vals = uCircle(coords[0], coords[1], coords[2], coords[3], itConf['center'])
     vx.set(vals[0])
     vy.set(vals[1])
     vr.set(vals[2])
@@ -857,7 +1025,7 @@ def centerChange(var, ob):
     del e
     cur.listConfig(ob[0], center=cent)
     c = canvas.coords(ob)
-    ncord = uCircle(c[0], c[1], c[2], c[3], 'mm', 'mm', 'mm', 'mm', oc)
+    ncord = uCircle(c[0], c[1], c[2], c[3], oc)
     ncoord = circle(ncord[0], ncord[1], ncord[2], 'mm', cent)
     canvas.coords(ob, ncoord[0], ncoord[1], ncoord[2], ncoord[3])
 
