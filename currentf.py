@@ -25,7 +25,7 @@ class getInstance:
             #pXo = which set of coords of the intersecting line intersect
             #showD = show Distance/line length
             global obList
-            aa  = {'Type':'CIRCLES', 'center':2, 'cx':None, 'cy':None, 'r':None, 'cxU':'mm', 'cyU':'mm', 'rU':"mm", 'showD':False}
+            aa  = {'Type':'CIRCLES', 'center':2, 'cx':None, 'cy':None, 'r':None, 'xu':'mm', 'yu':'mm', 'ru':"mm", 'showD':False}
             aa.update(a)
             obList[tag] = aa
 

@@ -5,6 +5,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Compiled Python
+*.pyc
+
 # Distribution / packaging
 .Python
 env/
@@ -52,3 +55,8 @@ docs/_build/
 
 # PyBuilder
 target/
+
+/config/*
+#/config
+/fabby-master/*
+#/fabby-master

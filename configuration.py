@@ -3,6 +3,7 @@ import os as os
 import json
 from shutil import rmtree
 from os.path import expanduser
+from os.path import join as OSpathJoin
 global appLoc
 appLoc = "C:\Users\john\Desktop\jDesigner"#C:\\Program Files\\aggendo\\jCode\\"
 configFold = "C:\Users\john\Desktop\jDesigner\config"
@@ -13,6 +14,17 @@ prefs = ""
 #jDe = json.JSONDecoder
 recF = file
 prefF = file
+tempFold = "C:\\Users\\john\\Desktop\\jDesigner\\temp"
+def genPaths():
+    partialPath =  v.__file__ #get the path to visualizer.pyc
+    partialPath = partialPath[:-15] #strip away the /visualizer.pyc
+    appLoc = partialPath
+    configFold = OSpathJoin(partialPath, "config")
+    tempFold = OSpathJoin(partialPath, "temp")
+    print(partialPath)
+genPaths()
+def getTemp():
+    return(tempFold) #TODO make tempFold configurable
 
 def singleton(cls):
     instances = {}
@@ -72,7 +84,6 @@ def printRecents():
     
 def getSetting(name):
     global prefs
-    print(prefs)
     prefF = open(prefs, "r")
     jPref = json.loads(prefF.read())
     prefF.close

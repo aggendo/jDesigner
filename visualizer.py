@@ -20,6 +20,8 @@ tool=0
 lineTH = 1.65 #line thickness IMPORTANT use lineTh in programming as that has
 #gone through mes()
 selected=0
+global newFile
+newFile = True #is the file new or an open file
 global master
 global objects
 objects=[]
@@ -633,9 +635,13 @@ def circle(cx, cy, cr, xu='mm', c=2, yu='mm', ru='mm'):#check if unit is nessess
         return([cor(x-r, u, 3), cor(y-r, u, 3), cor(x+r, u, 1), cor(y+r, u, 1)])
     
 
-def uCircle(px1, py1, px2, py2, center=2):
+def uCircle(px1, py1, px2, py2, center=2, Id=0):
     cur = currentf.getInstance()
-    itConf = cur.listConfig(selected[0])
+    itConf=0
+    if(Id==0):
+        itConf = cur.listConfig(selected[0])
+    else:
+        itConf = cur.listConfig(Id)
     cc = c = center
     
     if(center==2):
@@ -716,6 +722,22 @@ def generate(event=""):
 
 def select(event=""):
     print("select")
+
+def saveStuff(event=""):
+    global newFile
+    global master
+    global canvas
+    file_opt = options = {}
+    options['defaultextension'] = '.j'
+    options['filetypes'] = [('john code files', '.j')]
+    options['initialdir'] = cnf.getSetting('defaultFolder')
+    if(newFile!=True):
+        options['initialfile'] = cnf.lastFile()
+    options['parent'] = master
+    options['title'] = 'Open'
+    file_path = tkFileDialog.asksaveasfilename(**file_opt)
+    inOut.save(file_path, canvas)
+    newFile=False
     
 
 def delete(event=""):
@@ -733,12 +755,13 @@ def performOpen(event=""):
     options['initialdir'] = cnf.getSetting('defaultFolder')
     lst = cnf.lastFile()
     if(lst!=None):
-        options['initialfile'] = cnf.lastFile()
+        options['initialfile'] = lst
     options['parent'] = master
     options['title'] = 'Open'
     file_path = tkFileDialog.askopenfilename(**file_opt)#mode='r'
     #if(os
     name = file_path.split("\\")[len(file_path.split('\\'))-1]
+    openFile = name              #save name of current file
     cnf.addRecent(name, file_path)
     #TODO save default folder if the working directory is not set in settings
     w = open(file_path, "r")
@@ -809,7 +832,7 @@ def createWindow():
     newBut.grid(row=1, column=1)
     openBut = Button(bBar, text="open", command=performOpen)
     openBut.grid(row=1, column=2)
-    saveBut = Button(bBar, text="save")
+    saveBut = Button(bBar, text="save", command=saveStuff)
     saveBut.grid(row=1, column=3)
     gnrtBut = Button(bBar, text="generate", command=generate)
     gnrtBut.grid(row=1, column=4)

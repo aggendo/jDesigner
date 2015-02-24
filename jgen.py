@@ -1,5 +1,7 @@
 #generates simple gcode
 import sys
+import configuration as cnf
+from shutil import copy as shutil
 global incontents;
 incontents=[];
 global outcontents;
@@ -98,12 +100,15 @@ def hole(x, y, lineN): # drill a hole through material
     return("G1Z"+materialThickness+"F"+drillingFeedrate);
 
 def writeFile(ofile):
-    outfile = open(ofile, "w");
-    outfile.truncate();
-    for i in range(0, len(outcontents)):
-        outfile.write(outcontents[i]);
-        outfile.write("\n")
-    outfile.close();
+    tempFold = cnf.getTemp() #get temporary folder to save file to to avoid truncating an existing file if there is an error
+    tempFile = path.join(tempFold, "tempGenFile.gcode") #create the path to the temporary file
+    with open(tempFile, "w") as outfile:
+        #outfile = open(ofile, "w");
+        outfile.truncate();
+        for i in range(0, len(outcontents)):
+            outfile.write(outcontents[i]);
+            outfile.write("\n")
+    shutil.copy(tempFile, ofile)
     print("done writing file");
 
 def comment(lineNum, Type): #add a comment to make gcode human readable
@@ -137,15 +142,16 @@ def header(filename):
 def doCommand(uLine, lineNum):
     if(uLine[0]!="#"):
         line = uLine.lower();
-        commands = [["layerBegin", 1], ["line", 4], ["comment", 1], ["circle", 3], ["arc", 7], ["hole", 2], ["layerEnd", 0]];
+        commands = [["layerBegin", 1], ["line", 4], ["comment", 1], ["circle", 3], ["arc", 7], ["hole", 2], ["layerEnd", 0], ["define", 2]];
         global cType;
         global cBegin;
         cType = -1;
         cBegin = 0;
-        for i in range(0, 7):#maybe needs to be 7
-            if(line.find(commands[i][0])!=-1):
+        for i in range(0, len(commands), 1):#maybe needs to be 7
+            found = line.find(commands[i][0])
+            if(str(found)!="-1"):
                 cType = i;
-                cBegin = len(commands[cType][0]) + line.find(commands[cType][0]);
+                cBegin = len(commands[cType][0]) + found
                 break
         b1 = line.find("(", cBegin);
         b2 = line.find(")", b1);
@@ -167,7 +173,7 @@ def doCommand(uLine, lineNum):
                 elif(cType==1): #line
                     addToOut(lineDraw(int(options[0]),int(options[1]),int(options[2]),int(options[3]),int(lineNum)) + comment(lineNum,"line"));
                 elif(cType==2): #comment
-                    addToOut("; " + options[0]);
+                    addToOut("; " + options[0].split("\"")[1]);
                 elif(cType==3): #circle
                     addToOut(circle(int(options[0]), int(options[1]), int(options[2]), lineNum), comment(lineNum, "circle"));
                 elif(cType==4): #arc
@@ -202,6 +208,7 @@ if(__name__=="__main__"):
         else:
             parse(sys.argv[1], sys.argv[2]);
     else:
-        print("help comming soon")
+        #print("help comming soon")
+        parse("C:/Users/john/Desktop/jDesigner/test.j", "C:/Users/john/Desktop/jDesigner/test.gcode")
 else:
     pass#party here we got work TODO
