@@ -81,7 +81,7 @@ def save(filename, canvas):
               coords = canvas.coords(i)
               #TODO ucor these things
               lineList[lLine] = "line(c=\"" + cent + "\"" + str(coords[0]) + itConf['x1u'] + "," + str(coords[1]) + itConf['y1u'] + "," + str(coords[2]) + itConf['x2u'] + "," + str(coords[3]) + itConf['y2u'] + ")"
-              lLine=lLine+1
+             lLine=lLine+1
               #todo finnish
             elif(itType=="arc"):
                 pass
