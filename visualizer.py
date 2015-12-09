@@ -4,6 +4,7 @@ import ttk as ttk
 import math as math
 import inOutPorter as inOut
 import configuration as cnf
+import jgen as jgen
 import os.path as path
 import currentf as currentf
 import errors as errors
@@ -716,8 +717,11 @@ def generate(event=""):
         options['initialfile'] = cnf.lastFile().split('.')[0] + ".gcode"
     options['parent'] = master
     options['title'] = 'Export'
-    file_path = tkFileDialog.asksavefilename(**file_opt)
-    inOut.importSvg
+    file_path = tkFileDialog.asksaveasfilename(**file_opt)
+    global canvas
+    inOut.save("temp.j", canvas)
+    jgen.parse("temp.j", file_path) #fixed it
+    #inOut.importSvg
     pass
 
 def select(event=""):
